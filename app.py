@@ -1,48 +1,36 @@
-import nltk
 import os
 import re
 import string
 from collections import Counter
 
-import faiss
-import numpy as np
+import nltk
 import streamlit as st
 from dotenv import load_dotenv
 from nltk.corpus import stopwords
-from nltk.tag import pos_tag
 from nltk.tokenize import word_tokenize, sent_tokenize
 from sentence_transformers import SentenceTransformer
 from textstat import flesch_kincaid_grade
 
 import google.generativeai as genai
 
-
+# Load environment variables
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-
 
 nltk_data_dir = os.path.join(os.path.expanduser("~"), "nltk_data")
 nltk.data.path.append(nltk_data_dir)
 
+# Ensure NLTK data is downloaded
+nltk.download('punkt', download_dir=nltk_data_dir)
+nltk.download('averaged_perceptron_tagger', download_dir=nltk_data_dir)
+nltk.download('stopwords', download_dir=nltk_data_dir)
 
-if not os.path.exists(os.path.join(nltk_data_dir, 'tokenizers/punkt')):
-    nltk.download('punkt', download_dir=nltk_data_dir)
-if not os.path.exists(os.path.join(nltk_data_dir, 'taggers/averaged_perceptron_tagger')):
-    nltk.download('averaged_perceptron_tagger', download_dir=nltk_data_dir)
-if not os.path.exists(os.path.join(nltk_data_dir, 'corpora/stopwords')):
-    nltk.download('stopwords', download_dir=nltk_data_dir)
-
-
+# Initialize the Sentence Transformer model
 model = SentenceTransformer('all-MiniLM-L6-v2')
-
-
-index = faiss.IndexFlatL2(384)  # Dimension 384 for the 'all-MiniLM-L6-v2' model
-
 
 def read_file(uploaded_file):
     content = uploaded_file.getvalue().decode("utf-8")
     return content
-
 
 def preprocess_text(text):
     text = re.sub(r'\[.*?\]', '', text)
@@ -50,40 +38,34 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
-
 def average_word_length(text):
     words = word_tokenize(text)
     word_lengths = [len(word) for word in words]
     return sum(word_lengths) / len(words)
-
 
 def punctuation_density(text):
     total_chars = len(text)
     num_punctuation = sum([1 for char in text if char in string.punctuation])
     return num_punctuation / total_chars
 
-
 def pos_density(text):
     tokens = word_tokenize(text)
-    tagged_tokens = pos_tag(tokens)
+    tagged_tokens = nltk.pos_tag(tokens)
     pos_counts = Counter(tag for word, tag in tagged_tokens)
     total_words = len(tokens)
     pos_density = {tag: count / total_words for tag, count in pos_counts.items()}
     return pos_density
-
 
 def sentence_complexity(text):
     sentences = sent_tokenize(text)
     complexity = sum([len(sent.split()) for sent in sentences]) / len(sentences)
     return complexity
 
-
 def repetition_ratio(text):
     words = word_tokenize(text)
     unique_words = set(words)
     repetition_ratio = (len(words) - len(unique_words)) / len(words)
     return repetition_ratio
-
 
 def dynamic_parameter_tracking(transcript_text):
     avg_word_len = average_word_length(transcript_text)
@@ -103,7 +85,6 @@ def dynamic_parameter_tracking(transcript_text):
     }
 
     return updated_parameters
-
 
 def generate_score_and_justification(transcript_text, avg_word_len, punctuation_dens, pos_dens, sent_comp, rep_ratio, readability_score):
     prompt = f"""
@@ -152,28 +133,21 @@ def generate_score_and_justification(transcript_text, avg_word_len, punctuation_
     Lastly, provide feedback to the salesperson based on the transcript analysis. Highlight any mistakes made during the conversation and suggest improvements to enhance conversion rates. Justify your feedback with specific examples from the transcript.
     """
 
-    model = genai.GenerativeModel('gemini-pro')
-    response = model.generate_content(prompt)
-    return response.text.strip()
-
-
-def generate_and_store_embeddings(text):
-    embeddings = model.encode([text])
-    index.add(embeddings)
-    return embeddings
+    try:
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        return f"Error generating content: {e}"
 
 def main():
     st.title("Sales Conversation Analysis")
 
-    # File upload
     uploaded_file = st.file_uploader("Upload sales conversation transcript", type=["txt"])
     if uploaded_file is not None:
         content = read_file(uploaded_file)
         cleaned_text = preprocess_text(content)
         updated_parameters = dynamic_parameter_tracking(cleaned_text)
-
-        # Generate embeddings and store them
-        embeddings = generate_and_store_embeddings(cleaned_text)
 
         # Generate score and justification
         score_and_justification = generate_score_and_justification(cleaned_text, **updated_parameters)
@@ -181,22 +155,6 @@ def main():
         # Display results
         st.markdown("**Score and Justification**")
         st.write(score_and_justification)
-
-        st.markdown("**Additional Analysis**")
-
-        # Reasons Customer Would Buy the Course
-        st.markdown("**Reasons Customer Would Buy the Course**")
-        st.markdown("- Highlight the benefits and features of the course that align with the customer's needs and goals, emphasizing how it can help advance their career or skills.")
-        st.markdown("- Address any concerns or objections raised by the customer, demonstrating how the course addresses those challenges effectively.")
-
-        # Reasons Customer Wouldn't Buy the Course
-        st.markdown("**Reasons Customer Wouldn't Buy the Course**")
-        st.markdown("- Identify any unresolved concerns or objections raised by the customer that may prevent them from making a purchase decision.")
-        st.markdown("- Consider any external factors or competing priorities mentioned by the customer that could impact their willingness or ability to enroll in the course.")
-
-        # Justification for Likelihood of Conversion
-        st.markdown("**Justification for Likelihood of Conversion**")
-        st.markdown("- Provide a brief analysis comparing the reasons for buying and not buying the course based on the conversation. Justify which scenario is more likely to happen and why, considering the overall tone, customer engagement, and agent effectiveness during the conversation.")
 
 if __name__ == "__main__":
     main()
