@@ -1,10 +1,10 @@
 import os
 import re
 import string
+import time
 from collections import Counter
 
 import nltk
-import openai
 import streamlit as st
 from dotenv import load_dotenv
 from nltk.corpus import stopwords
@@ -12,9 +12,11 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from sentence_transformers import SentenceTransformer
 from textstat import flesch_kincaid_grade
 
+import google.generativeai as genai
+
 # Load environment variables
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 nltk_data_dir = os.path.join(os.path.expanduser("~"), "nltk_data")
 nltk.data.path.append(nltk_data_dir)
@@ -133,12 +135,9 @@ def generate_score_and_justification(transcript_text, avg_word_len, punctuation_
     """
 
     try:
-        response = openai.Completion.create(
-            model="text-davinci-003",
-            prompt=prompt,
-            max_tokens=1500
-        )
-        return response.choices[0].text.strip()
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content(prompt)
+        return response.text.strip()
     except Exception as e:
         return f"Error generating content: {e}"
 
@@ -158,6 +157,8 @@ def main():
         st.markdown("**Score and Justification**")
         st.write(score_and_justification)
 
+        # Add a delay between requests to avoid hitting the rate limit
+        time.sleep(60)
+
 if __name__ == "__main__":
     main()
-
