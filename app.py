@@ -1,3 +1,4 @@
+import time
 import os
 import re
 import string
@@ -155,6 +156,9 @@ def main():
         # Display results
         st.markdown("**Score and Justification**")
         st.write(score_and_justification)
+
+        # Add a delay between requests to avoid hitting the rate limit
+        time.sleep(60)
 
 if __name__ == "__main__":
     main()
