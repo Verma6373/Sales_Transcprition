@@ -18,6 +18,7 @@ import google.generativeai as genai
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+# Set up the NLTK data directory and ensure it is used
 nltk_data_dir = os.path.join(os.path.expanduser("~"), "nltk_data")
 nltk.data.path.append(nltk_data_dir)
 
@@ -25,6 +26,30 @@ nltk.data.path.append(nltk_data_dir)
 nltk.download('punkt', download_dir=nltk_data_dir)
 nltk.download('averaged_perceptron_tagger', download_dir=nltk_data_dir)
 nltk.download('stopwords', download_dir=nltk_data_dir)
+
+# Debugging to ensure required NLTK data is available
+print("NLTK data path:", nltk.data.path)
+
+try:
+    nltk.data.find('tokenizers/punkt')
+    print("Punkt tokenizer found.")
+except LookupError:
+    print("Punkt tokenizer not found. Attempting to download...")
+    nltk.download('punkt', download_dir=nltk_data_dir)
+
+try:
+    nltk.data.find('taggers/averaged_perceptron_tagger')
+    print("Averaged perceptron tagger found.")
+except LookupError:
+    print("Averaged perceptron tagger not found. Attempting to download...")
+    nltk.download('averaged_perceptron_tagger', download_dir=nltk_data_dir)
+
+try:
+    nltk.data.find('corpora/stopwords')
+    print("Stopwords corpus found.")
+except LookupError:
+    print("Stopwords corpus not found. Attempting to download...")
+    nltk.download('stopwords', download_dir=nltk_data_dir)
 
 # Initialize the Sentence Transformer model
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -139,6 +164,7 @@ def generate_score_and_justification(transcript_text, avg_word_len, punctuation_
         response = model.generate_content(prompt)
         return response.text.strip()
     except Exception as e:
+        st.error(f"Error generating content: {e}")
         return f"Error generating content: {e}"
 
 def main():
