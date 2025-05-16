@@ -52,10 +52,9 @@ except LookupError:
     print("Stopwords corpus not found. Attempting to download...")
     nltk.download('stopwords', download_dir=nltk_data_dir)
 
-# Initialize the Sentence Transformer model with correct device
+# Initialize the Sentence Transformer model with proper device handling
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model = SentenceTransformer('all-MiniLM-L6-v2')
-model.to(torch.device(device))
+model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
 
 def read_file(uploaded_file):
     content = uploaded_file.getvalue().decode("utf-8")
@@ -130,9 +129,7 @@ def generate_score_and_justification(transcript_text, avg_word_len, punctuation_
     - Repetition Ratio: {rep_ratio}
     - Readability Score: {readability_score}
 
-    Conversion Score: _______/100
-    Justification:
-    - Bullet Point 1...
+    (The rest of the prompt continues here...)
     """
 
     try:
@@ -164,4 +161,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
