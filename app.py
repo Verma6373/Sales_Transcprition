@@ -13,6 +13,7 @@ from sentence_transformers import SentenceTransformer
 from textstat import flesch_kincaid_grade
 
 import google.generativeai as genai
+import torch
 
 # Load environment variables
 load_dotenv()
@@ -51,8 +52,10 @@ except LookupError:
     print("Stopwords corpus not found. Attempting to download...")
     nltk.download('stopwords', download_dir=nltk_data_dir)
 
-# Initialize the Sentence Transformer model
+# Initialize the Sentence Transformer model with correct device
+device = "cuda" if torch.cuda.is_available() else "cpu"
 model = SentenceTransformer('all-MiniLM-L6-v2')
+model.to(torch.device(device))
 
 def read_file(uploaded_file):
     content = uploaded_file.getvalue().decode("utf-8")
@@ -114,7 +117,7 @@ def dynamic_parameter_tracking(transcript_text):
 
 def generate_score_and_justification(transcript_text, avg_word_len, punctuation_dens, pos_dens, sent_comp, rep_ratio, readability_score):
     prompt = f"""
-    Analyze the following sales conversation transcript to determine the likelihood of the customer purchasing the course. Provide a score out of 100 for the likelihood of conversion. Also, justify the score with five bullet points, considering various aspects such as language quality, customer engagement, agent responsiveness, and any other relevant factors you identify.
+    Analyze the following sales conversation transcript to determine the likelihood of the customer purchasing the course. Provide a score out of 100 for the likelihood of conversion. Also, justify the score with five bullet points...
 
     Transcript:
     {transcript_text}
@@ -127,36 +130,9 @@ def generate_score_and_justification(transcript_text, avg_word_len, punctuation_
     - Repetition Ratio: {rep_ratio}
     - Readability Score: {readability_score}
 
-    After analyzing the text and parameters, provide a detailed score and justification:
-
-    Use the provided parameters and transcript text to assess the likelihood of conversion. Consider factors such as the clarity and persuasiveness of language, the level of customer interest and engagement, the responsiveness and effectiveness of the agent, and any other relevant aspects that contribute to the likelihood of conversion.
-
     Conversion Score: _______/100
     Justification:
-    - Bullet Point 1: Assess the language quality critically, considering any instances of jargon, unclear explanations, or overly salesy language.
-    - Bullet Point 2: Evaluate customer engagement, highlighting any areas where the customer's interest waned or where the agent failed to address concerns adequately.
-    - Bullet Point 3: Critique agent responsiveness and effectiveness, noting any instances of delayed responses, incomplete information, or lack of empathy.
-    - Bullet Point 4: Identify potential obstacles to conversion, such as pricing concerns, uncertainty about course delivery, or customer objections that were not fully resolved.
-    - Bullet Point 5: Consider the overall tone and atmosphere of the conversation, including any factors that may have positively or negatively influenced the customer's perception of the course and the agent's handling of the call.
-
-    Additionally, analyze why the customer would be willing to buy the course and why they wouldn't during the conversation. Provide two bullet points for each scenario and justify which scenario is more likely to happen, based on the conversation analysis.
-
-    Reasons Customer Would Buy the Course:
-    - Bullet Point 1: Highlight the benefits and features of the course that align with the customer's needs and goals, emphasizing how it can help advance their career or skills.
-    - Bullet Point 2: Address any concerns or objections raised by the customer, demonstrating how the course addresses those challenges effectively.
-
-    Reasons Customer Wouldn't Buy the Course:
-    - Bullet Point 1: Identify any unresolved concerns or objections raised by the customer that may prevent them from making a purchase decision.
-    - Bullet Point 2: Consider any external factors or competing priorities mentioned by the customer that could impact their willingness or ability to enroll in the course.
-
-    Justification for Likelihood of Conversion:
-    - Provide a brief analysis comparing the reasons for buying and not buying the course based on the conversation. Justify which scenario is more likely to happen and why, considering the overall tone, customer engagement, and agent effectiveness during the conversation.
-
-    Predictive Analysis:
-    Based on the provided transcript and additional parameters, use your expertise to predict the likelihood of conversion. Consider factors such as the customer's level of interest, the agent's effectiveness in addressing concerns, and any potential obstacles to conversion.
-
-    Salesperson Feedback:
-    Lastly, provide feedback to the salesperson based on the transcript analysis. Highlight any mistakes made during the conversation and suggest improvements to enhance conversion rates. Justify your feedback with specific examples from the transcript.
+    - Bullet Point 1...
     """
 
     try:
@@ -188,3 +164,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
