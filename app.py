@@ -4,11 +4,11 @@ from nltk.tokenize import word_tokenize
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
-# Ensure NLTK tokenizer is available
+# Download necessary tokenizer
 nltk.download('punkt')
 
-# Load model (compatible with torch 2.0.1)
-model = SentenceTransformer('all-MiniLM-L6-v2')
+# Explicitly load model on CPU to avoid NotImplementedError
+model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
 
 # Helper functions
 def average_word_length(text):
@@ -18,10 +18,11 @@ def average_word_length(text):
     return sum(len(word) for word in words) / len(words)
 
 def dynamic_parameter_tracking(text):
+    embedding = model.encode([text])[0]
     return {
         "word_count": len(text.split()),
         "average_word_length": average_word_length(text),
-        "embedding_vector_mean": float(np.mean(model.encode([text])[0]))
+        "embedding_vector_mean": float(np.mean(embedding))
     }
 
 # Streamlit UI
@@ -36,7 +37,7 @@ def main():
 
         results = dynamic_parameter_tracking(transcript_text)
         st.subheader("Analysis Results")
-        st.write(results)
+        st.json(results)
 
 if __name__ == "__main__":
     main()
