@@ -2,15 +2,21 @@ import streamlit as st
 import nltk
 from nltk.tokenize import word_tokenize
 from sentence_transformers import SentenceTransformer
+import torch
 import numpy as np
 
-# Download necessary tokenizer
+# Download required tokenizer
 nltk.download('punkt')
 
-# Explicitly load model on CPU to avoid NotImplementedError
-model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
+# Load model safely on CPU
+model = SentenceTransformer('all-MiniLM-L6-v2')
+if torch.__version__ >= "2.0.0":
+    try:
+        model = torch.nn.Module.to_empty(model, device=torch.device("cpu"))
+    except Exception:
+        pass
 
-# Helper functions
+# Text analysis
 def average_word_length(text):
     words = word_tokenize(text)
     if not words:
@@ -31,8 +37,8 @@ def main():
     transcript_text = st.text_area("Paste the sales transcript below:")
 
     if st.button("Analyze"):
-        if transcript_text.strip() == "":
-            st.warning("Please paste some text to analyze.")
+        if not transcript_text.strip():
+            st.warning("Please enter a transcript.")
             return
 
         results = dynamic_parameter_tracking(transcript_text)
