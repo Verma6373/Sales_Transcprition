@@ -6,68 +6,74 @@ from nltk.corpus import stopwords
 from nltk import pos_tag
 from sentence_transformers import SentenceTransformer
 
-# Ensure NLTK data directory is configured correctly
+# Configure NLTK data path
 nltk_data_dir = os.path.join(os.path.expanduser("~"), "nltk_data")
 nltk.data.path.append(nltk_data_dir)
 
-# Download required NLTK resources if missing
-for resource in ['punkt', 'averaged_perceptron_tagger', 'stopwords']:
-    try:
-        nltk.data.find(f'tokenizers/{resource}' if resource == 'punkt' else f'taggers/{resource}' if resource == 'averaged_perceptron_tagger' else f'corpora/{resource}')
-    except LookupError:
-        nltk.download(resource, download_dir=nltk_data_dir)
+# Function to safely download NLTK data
+def download_nltk_data():
+    required_resources = {
+        "punkt": "tokenizers/punkt",
+        "averaged_perceptron_tagger": "taggers/averaged_perceptron_tagger",
+        "stopwords": "corpora/stopwords"
+    }
 
-# Load the sentence transformer model safely
+    for name, path in required_resources.items():
+        try:
+            nltk.data.find(path)
+        except LookupError:
+            nltk.download(name, download_dir=nltk_data_dir)
+
+download_nltk_data()
+
+# Load the SentenceTransformer model
 try:
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    model = SentenceTransformer("all-MiniLM-L6-v2")
 except Exception as e:
-    st.error(f"Error loading SentenceTransformer model: {e}")
+    st.error(f"Could not load model: {e}")
     st.stop()
 
-# Function to compute average word length
+# NLP analysis functions
 def average_word_length(text):
     words = word_tokenize(text)
-    if not words:
-        return 0
-    return round(sum(len(word) for word in words) / len(words), 2)
+    return round(sum(len(word) for word in words) / len(words), 2) if words else 0
 
-# Function to count stopwords
 def count_stopwords(text):
-    stop_words = set(stopwords.words('english'))
+    stop_words = set(stopwords.words("english"))
     words = word_tokenize(text)
     return sum(1 for word in words if word.lower() in stop_words)
 
-# Function to perform POS tagging
 def pos_statistics(text):
     words = word_tokenize(text)
     pos_tags = pos_tag(words)
-    tags = [tag for _, tag in pos_tags]
-    freq_dist = nltk.FreqDist(tags)
-    return dict(freq_dist)
+    tag_freq = nltk.FreqDist(tag for _, tag in pos_tags)
+    return dict(tag_freq)
 
-# Main analysis function
 def dynamic_parameter_tracking(transcript_text):
     return {
         "average_word_length": average_word_length(transcript_text),
         "stopword_count": count_stopwords(transcript_text),
         "pos_distribution": pos_statistics(transcript_text),
-        "embedding_dimension": len(model.encode(["test"])[0])
+        "embedding_dimension": len(model.encode(["sample text"])[0])
     }
 
-# Streamlit UI
+# Streamlit interface
 def main():
-    st.title("Sales Transcription Analyzer")
-    st.markdown("Analyze text from sales transcripts using NLP and embeddings.")
-    
-    transcript_text = st.text_area("Paste the transcription text below:", height=200)
+    st.title("Sales Transcription Analysis")
+    st.markdown("Analyze your sales transcription using NLP and embeddings.")
 
-    if st.button("Run Analysis"):
+    transcript_text = st.text_area("Paste the transcription text below:")
+
+    if st.button("Analyze"):
         if transcript_text.strip():
-            results = dynamic_parameter_tracking(transcript_text)
-            st.subheader("Analysis Results")
-            st.write(results)
+            try:
+                results = dynamic_parameter_tracking(transcript_text)
+                st.subheader("Analysis Results")
+                st.json(results)
+            except Exception as e:
+                st.error(f"Analysis failed: {e}")
         else:
-            st.warning("Please enter some text to analyze.")
+            st.warning("Please enter transcription text.")
 
 if __name__ == "__main__":
     main()
