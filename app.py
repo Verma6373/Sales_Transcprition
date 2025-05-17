@@ -1,28 +1,27 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""  # Disable GPU use entirely
+
 import streamlit as st
 import nltk
 from nltk.tokenize import word_tokenize
 from sentence_transformers import SentenceTransformer
-import torch
 import numpy as np
 
-# Download required tokenizer
+# Download tokenizer data
 nltk.download('punkt')
 
-# Load model safely on CPU
+# Safely load model WITHOUT .to(device)
 model = SentenceTransformer('all-MiniLM-L6-v2')
-if torch.__version__ >= "2.0.0":
-    try:
-        model = torch.nn.Module.to_empty(model, device=torch.device("cpu"))
-    except Exception:
-        pass
+model._first_module().eval()  # Ensure model is in eval mode without moving device
 
-# Text analysis
+# Function to calculate average word length
 def average_word_length(text):
     words = word_tokenize(text)
     if not words:
         return 0
     return sum(len(word) for word in words) / len(words)
 
+# Function to extract metrics
 def dynamic_parameter_tracking(text):
     embedding = model.encode([text])[0]
     return {
@@ -33,12 +32,12 @@ def dynamic_parameter_tracking(text):
 
 # Streamlit UI
 def main():
-    st.title("Sales Transcription Analyzer")
+    st.title("Sales Transcript Analyzer")
     transcript_text = st.text_area("Paste the sales transcript below:")
 
     if st.button("Analyze"):
         if not transcript_text.strip():
-            st.warning("Please enter a transcript.")
+            st.warning("Please enter some text.")
             return
 
         results = dynamic_parameter_tracking(transcript_text)
@@ -47,4 +46,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
